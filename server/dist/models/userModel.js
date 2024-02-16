@@ -34,5 +34,7 @@ const userSchema = new mongoose_1.Schema({
     interests: [{ type: String }],
     verificationCode: { type: String },
     isVerified: { type: Boolean, default: false },
+    resetToken: { type: String },
+    resetTokenExpiry: { type: Date },
 });
 exports.default = mongoose_1.default.model('User', userSchema);

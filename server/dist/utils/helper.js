@@ -12,10 +12,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendEmail = void 0;
+exports.generateLongString = exports.generateToken = exports.sendEmail = exports.transporter = exports.passwordRegex = void 0;
 const nodemailer_1 = __importDefault(require("nodemailer"));
 const config_1 = __importDefault(require("../utils/config"));
-const transporter = nodemailer_1.default.createTransport({
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+exports.passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?.&])[A-Za-z\d@$!%*?.&]{7,}$/;
+exports.transporter = nodemailer_1.default.createTransport({
     service: "gmail",
     auth: {
         user: config_1.default.GMAIL_USER,
@@ -26,7 +28,7 @@ const sendEmail = (to, subject, html) => __awaiter(void 0, void 0, void 0, funct
     validateEmailParameters(to, subject, html);
     try {
         // Send email
-        const response = yield transporter.sendMail({
+        const response = yield exports.transporter.sendMail({
             from: config_1.default.FROM_ADMIN_EMAIL,
             to,
             subject,
@@ -54,3 +56,20 @@ const validateEmailParameters = (to, subject, html) => {
         throw new Error(errorMessage.trim());
     }
 };
+const generateToken = (userData) => {
+    const secretKey = config_1.default.SECRET_KEY; // Replace with your actual secret key
+    const expiresIn = '1d'; // Token expiration time, you can adjust it based on your needs
+    const token = jsonwebtoken_1.default.sign(userData, secretKey, { expiresIn });
+    return token;
+};
+exports.generateToken = generateToken;
+const generateLongString = (length) => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let longString = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        longString += characters.charAt(randomIndex);
+    }
+    return longString;
+};
+exports.generateLongString = generateLongString;

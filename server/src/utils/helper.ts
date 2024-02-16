@@ -1,7 +1,17 @@
 import nodemailer from "nodemailer";
 import config from "../utils/config";
+import jwt from "jsonwebtoken";
 
-const transporter = nodemailer.createTransport({
+interface UserData {
+    id: string; // or number, depending on your user model
+    email: string;
+}
+
+export const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?.&])[A-Za-z\d@$!%*?.&]{7,}$/;
+
+
+export const transporter = nodemailer.createTransport({
     service: "gmail",
     auth: {
         user: config.GMAIL_USER,
@@ -42,3 +52,22 @@ const validateEmailParameters = (to: string, subject: string, html: string) => {
     }
 };
 
+
+export const generateToken = (userData: UserData): string => {
+    const secretKey = config.SECRET_KEY; // Replace with your actual secret key
+    const expiresIn = '1d'; // Token expiration time, you can adjust it based on your needs
+
+    const token = jwt.sign(userData, secretKey, { expiresIn });
+
+    return token;
+};
+
+export const generateLongString = (length: number): string => {
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    let longString = '';
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        longString += characters.charAt(randomIndex);
+    }
+    return longString;
+};

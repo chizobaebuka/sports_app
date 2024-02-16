@@ -10,6 +10,8 @@ export interface IUser extends Document {
     interests: string[];
     verificationCode: string;
     isVerified: boolean;
+    resetToken: string;
+    resetTokenExpiry: Date;
 }
 
 const userSchema: Schema = new Schema({
@@ -21,6 +23,8 @@ const userSchema: Schema = new Schema({
     interests: [{ type: String }],
     verificationCode: { type: String },
     isVerified: { type: Boolean, default: false },
+    resetToken: { type: String },
+    resetTokenExpiry: { type: Date },
 });
 
 export default mongoose.model<IUser>('User', userSchema);
