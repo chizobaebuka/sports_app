@@ -4,28 +4,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
-const mongoose_1 = __importDefault(require("mongoose"));
 const dotenv_1 = __importDefault(require("dotenv"));
-// import userRouter from "./routes/user";
-// import authRouter from "./routes/auth";
-// import paymentRouter from "./routes/payment";
+const userRoutes1_1 = __importDefault(require("./routes/userRoutes1"));
 const cors_1 = __importDefault(require("cors"));
 const config_1 = __importDefault(require("./utils/config"));
-// import config from "./utils/config";
-dotenv_1.default.config();
+const dbConnection_1 = require("./utils/dbConnection");
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
+(0, dbConnection_1.connection)();
 const app = (0, express_1.default)();
+dotenv_1.default.config();
 const port = config_1.default.PORT;
-const db = config_1.default.MONGO_URL;
-mongoose_1.default.set("strictQuery", false);
-mongoose_1.default
-    .connect(db)
-    .then(() => console.log("MongoDB Connection Successful"))
-    .catch((err) => console.error("MongoDB Connection Error:", err));
 app.use(express_1.default.json());
+app.use(express_1.default.urlencoded({ extended: false }));
+app.use((0, cookie_parser_1.default)());
 app.use((0, cors_1.default)({ origin: "*" }));
-// app.use("/api/users", userRouter);
-// app.use("/api/auth", authRouter);
-// app.use("/api/payments", paymentRouter);
+app.use("/users", userRoutes1_1.default);
 app.listen(port, () => {
     console.log(`Server is running at http://localhost:${port}`);
 });

@@ -23,16 +23,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.userLogout = exports.userResetPassword = exports.userForgotPassword = exports.userChangePassword = exports.loginUser = exports.verifyUser = exports.registerUser = void 0;
+exports.updateUserEmail = exports.logoutUser = exports.userResetPassword = exports.userForgotPassword = exports.userChangePassword = exports.loginUser = exports.verifyUser = exports.registerUser = void 0;
 const uuid_1 = require("uuid");
 const userModel_1 = __importDefault(require("../models/userModel"));
-// import { config } from '../utils/config';
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const helper_1 = require("../utils/helper");
 const jwt_1 = require("../utils/jwt");
-const config_1 = __importDefault(require("../utils/config"));
+// import config from '../utils/config';
 const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    if (!req.body.email || !req.body.phone || !req.body.password || !req.body.interests) {
+    // const { email, phone, password, interests }
+    if (!req.body.email ||
+        !req.body.phone ||
+        !req.body.password ||
+        !req.body.interests) {
         return res.status(400).json({
             message: "Please provide email, phone, password, and interests",
         });
@@ -54,24 +57,88 @@ const registerUser = (req, res) => __awaiter(void 0, void 0, void 0, function* (
             return res.status(409).json({ message: "Phone number already exists" });
         }
         const hashedPassword = yield bcrypt_1.default.hash(req.body.password, 10);
-        const newUser = new userModel_1.default({
+        const newUser = yield userModel_1.default.create({
             email: req.body.email,
             phone: req.body.phone,
             password: hashedPassword,
             interests: req.body.interests,
             verificationCode: otp,
+            firstName: req.body.firstName,
+            lastName: req.body.lastName,
+            isVerified: false,
         });
+        console.log('otp', newUser.verificationCode);
         const savedUser = yield newUser.save();
-        const verificationEmailHtml = `<p>Your verification code is: ${otp}</p>`;
-        yield (0, helper_1.sendEmail)(savedUser.email, "Verify Your Account", verificationEmailHtml);
-        res.status(201).json({ message: 'User registered successfully' });
+        // const verificationEmailHtml = `<p>Your verification code is: ${otp}</p>`;
+        // await sendRegistrationEmail(
+        //     savedUser.email,
+        //     { firstName: savedUser.firstName, lastName: savedUser.lastName },
+        //     verificationEmailHtml
+        // );
+        const successEmailHtml = '<p>Thank you for registering! You have successfully signed up on our platform.</p>';
+        yield (0, helper_1.sendSuccessEmail)(savedUser.email, successEmailHtml); // Add this line
+        res.status(201).json({ message: "User registered successfully" });
     }
     catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Internal Server Error' });
+        res.status(500).json({ message: "Internal Server Error" });
     }
 });
 exports.registerUser = registerUser;
+// export const registerUser = async (req: Request, res: Response) => {
+//     const { email, phone, password, interests, firstName, lastName } = req.body;
+//     if (!email || !phone || !password || !interests) {
+//         return res.status(400).json({
+//             message: "Please provide email, phone, password, and interests",
+//         });
+//     }
+//     const otp = uuidv4().substring(0, 5); // Generate a 5-digit OTP for simplicity
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; // Regular expression for email validation
+//     if (!emailRegex.test(email)) {
+//         return res.status(400).json({
+//             message: "Invalid email address format",
+//         });
+//     }
+//     try {
+//         const userEmail = await User.findOne({ where: { email } });
+//         if (userEmail) {
+//             return res.status(409).json({ message: "Email already exists" });
+//         }
+//         const userPhone = await User.findOne({ where: { phone } });
+//         if (userPhone) {
+//             return res.status(409).json({ message: "Phone number already exists" });
+//         }
+//         const hashedPassword = await bcrypt.hash(password, 10);
+//         const newUser = await User.create({
+//             email,
+//             phone,
+//             password: hashedPassword,
+//             interests,
+//             verificationCode: otp,
+//             firstName,
+//             lastName,
+//             isVerified: false,
+//         });
+//         console.log('otp', newUser);
+//         await newUser.save();
+//         // await client.messages.create({
+//         //     body: `Your verification code is: ${otp}`,
+//         //     to: `+${savedUser.phone}`,  // Assuming user.phone contains the phone number
+//         //     from: `${process.env.TWILIOPHONENUMBER}`,
+//         // });
+//         // const verificationEmailHtml = `<p>Your verification code is: ${otp}</p>`;
+//         // console.log('verifyEmail', verificationEmailHtml);
+//         // await sendRegistrationEmail(
+//         //     savedUser.email,
+//         //     { firstName: savedUser.firstName, lastName: savedUser.lastName },
+//         //     verificationEmailHtml
+//         // );
+//         res.status(201).json({ message: "User registered successfully" });
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: "Internal Server Error" });
+//     }
+// };
 const verifyUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { userId, otp } = req.body;
@@ -117,7 +184,8 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Invalid password" });
         }
-        const accessToken = (0, jwt_1.generateUsersToken)({ id: user._id, email: user.email });
+        // const accessToken = generateUsersToken({ id: user._id, email: user.email });
+        const accessToken = yield (0, jwt_1.GenerateToken)({ id: user._id, email: user.email });
         const _a = user.toObject(), { password } = _a, others = __rest(_a, ["password"]);
         res.status(200).json(Object.assign(Object.assign({}, others), { accessToken }));
     }
@@ -128,6 +196,7 @@ const loginUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.loginUser = loginUser;
 const userChangePassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _b;
     try {
         const { oldPassword, newPassword, confirmPassword } = req.body;
         if (newPassword !== confirmPassword) {
@@ -140,9 +209,10 @@ const userChangePassword = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 message: `Old Password cannot be equal to New Password`,
             });
         }
-        const userId = req.user.id;
+        const userId = (_b = req.user) === null || _b === void 0 ? void 0 : _b.id;
+        console.log('user', userId);
+        // Use findById to find the user by ID
         const user = yield userModel_1.default.findById(userId);
-        console.log('user', user);
         if (!user) {
             return res.status(404).json({
                 message: `User not found`,
@@ -162,8 +232,8 @@ const userChangePassword = (req, res) => __awaiter(void 0, void 0, void 0, funct
                 message: `Password must be at least 7 characters long and should contain at least one uppercase letter, one lowercase letter, one special character, and one number.`,
             });
         }
-        const token = yield (0, helper_1.generateToken)({
-            id: user.id,
+        const token = yield (0, jwt_1.GenerateToken)({
+            id: user._id,
             email: user.email,
         });
         // Assuming you have a method to update the user's password in your MongoDB model
@@ -171,7 +241,7 @@ const userChangePassword = (req, res) => __awaiter(void 0, void 0, void 0, funct
         yield user.save();
         return res.status(200).json({
             message: "You have successfully changed your password",
-            id: user.id,
+            id: user._id,
             email: user.email,
             token,
         });
@@ -184,6 +254,124 @@ const userChangePassword = (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 });
 exports.userChangePassword = userChangePassword;
+// export const userChangePassword = async (req: Request, res: Response) => {
+//     try {
+//         const { oldPassword, newPassword, confirmPassword } = req.body;
+//         if (newPassword !== confirmPassword) {
+//             return res.status(400).json({
+//                 message: `New Password and Confirm Password Mismatch`,
+//             });
+//         }
+//         if (oldPassword === newPassword) {
+//             return res.status(400).json({
+//                 message: `Old Password cannot be equal to New Password`,
+//             });
+//         }
+//         const userId = (req.user as IUser)._id; // Assuming the user ID is stored in the _id field
+//         console.log('user', userId);
+//         const user = await User.findById(userId);
+//         if (!user) {
+//             return res.status(404).json({
+//                 message: `User not found`,
+//             });
+//         }
+//         const checkPassword = await bcrypt.compare(oldPassword, user.password);
+//         if (!checkPassword) {
+//             return res.status(401).json({
+//                 status: "error",
+//                 method: req.method,
+//                 message: "Old Password is Incorrect",
+//             });
+//         }
+//         const passwordRegex =
+//             /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?.&])[A-Za-z\d@$!%*?.&]{7,}$/;
+//         if (!passwordRegex.test(newPassword)) {
+//             return res.status(400).json({
+//                 message: `Password must be at least 7 characters long and should contain at least one uppercase letter, one lowercase letter, one special character, and one number.`,
+//             });
+//         }
+//         const token = await generateToken({
+//             id: user._id, // Use _id as the user ID
+//             email: user.email,
+//         });
+//         // Assuming you have a method to update the user's password in your MongoDB model
+//         user.password = newPassword;
+//         await user.save();
+//         return res.status(200).json({
+//             message: "You have successfully changed your password",
+//             id: user._id, // Use _id as the user ID
+//             email: user.email,
+//             token,
+//         });
+//     } catch (err: any) {
+//         console.error(err.message);
+//         return res.status(500).json({
+//             message: `Internal Server Error`,
+//         });
+//     }
+// };
+// export const userChangePassword = async (req: JwtPayload, res: Response) => {
+//   try {
+//     const { oldPassword, newPassword, confirmPassword } = req.body;
+//     if (newPassword !== confirmPassword) {
+//       return res.status(400).json({
+//         message: `New Password and Confirm Password Mismatch`,
+//       });
+//     }
+//     if (oldPassword === newPassword)
+//       return res
+//         .status(400)
+//         .json({ message: `Old Password cannot be equal to New Password` });
+//     const userId = req.user.id;
+//     const checkPassword = await bcrypt.compare(oldPassword, user.password);
+//     if (!checkPassword) {
+//       return res.status(401).send({
+//         status: "error",
+//         method: req.method,
+//         message: "Old Password is Incorect",
+//       });
+//     }
+//     const passwordRegex =
+//       /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?.&])[A-Za-z\d@$!%*?.&]{7,}$/;
+//     if (!passwordRegex.test(newPassword)) {
+//       return res.status(400).json({
+//         message: `Password must be at least 7 characters long and should contain at least one uppercase letter, one lowercase letter, one special character, and one number.`,
+//       });
+//     }
+//     // console.log(req)// Assuming you have user data in req.user
+//     const token = await GenerateToken({
+//       id: user.id,
+//       email: user.email,
+//     });
+//     res.cookie("token", token);
+//     // const new_salt = await GenerateSalt();
+//     const hash = await hashPassword(newPassword);
+//     const updatedUser = await Users.update(
+//       {
+//         password: hash,
+//       },
+//       { where: { id: userId } }
+//     );
+//     if (updatedUser) {
+//       return res.status(200).json({
+//         message: "You have successfully changed your password",
+//         id: user.id,
+//         email: user.email,
+//         role: user.role,
+//         token,
+//       });
+//     }
+//     return res.status(400).json({
+//       message: "Unsuccessful, contact Admin",
+//       user,
+//     });
+//   } catch (err: any) {
+//     console.log(err.message);
+//     return res.status(500).json({
+//       message: `Internal Server Error`,
+//     });
+//   }
+// };
 const userForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { email } = req.body;
@@ -202,7 +390,7 @@ const userForgotPassword = (req, res) => __awaiter(void 0, void 0, void 0, funct
             from: process.env.GMAIL_USER,
             to: email,
             subject: "Reset your password",
-            text: `Hi, ${user.firstName} ${user.lastName} \n\nPlease use the following link to reset your password \n\n  ${config_1.default.FRONTEND_BASE_URL}/reset-password?token=${longString} `,
+            text: `Hi, ${user.firstName} ${user.lastName} \n\nPlease use the following link to reset your password \n\n  http://localhost:3000/reset-password?token=${longString} `,
         };
         // Send the email
         helper_1.transporter.sendMail(mailOptions, (err, info) => {
@@ -268,7 +456,7 @@ const userResetPassword = (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.userResetPassword = userResetPassword;
-const userLogout = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+const logoutUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.user.id;
         const user = yield userModel_1.default.findById(userId);
@@ -288,4 +476,29 @@ const userLogout = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
         });
     }
 });
-exports.userLogout = userLogout;
+exports.logoutUser = logoutUser;
+const updateUserEmail = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.user.id;
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ message: "Please provide an email" });
+        }
+        const user = yield userModel_1.default.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        const userEmail = yield userModel_1.default.findOne({ email });
+        if (userEmail) {
+            return res.status(409).json({ message: "Email already exists" });
+        }
+        user.email = email;
+        yield user.save();
+        return res.status(200).json({ message: "Email updated successfully", email: user.email });
+    }
+    catch (error) {
+        console.log(error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+});
+exports.updateUserEmail = updateUserEmail;
